@@ -1,5 +1,8 @@
 /* Attempts to provide support between certain C, C++, and CUDA constructs.
-   Some constructs are emulated, but others that have no corresponding language equivalent are simply hidden. */
+   Some constructs are emulated, but others that have no corresponding language equivalent are simply hidden.
+   
+   While these constructs can be invoked in one's programs, they are primarily intended for internal use,
+   and so are subject to change.*/
 
 #ifndef _C_CPP_CUDA_SUPPORT_H
 #define _C_CPP_CUDA_SUPPORT_H
@@ -18,16 +21,26 @@
 #endif
 
 // Import libraries this file needs
+/* TODO: Use __has_include to add errors if libraries do not exist
+   Maybe also try falling back on <*.h> if <c*> is unfindable, or vice versa?*/
 #include INCLUDE_STANDARD(inttypes) // uint32_t, uint64_t
 #include INCLUDE_STANDARD(stdio)    // fprintf, stderr
 #include INCLUDE_STANDARD(stdlib)   // malloc
 #include INCLUDE_STANDARD(string)   // memcpy
+#ifdef __cplusplus
+	#include <stdexcept>
+#endif
 
 // Substitute/ignore C++ keywords that don't exist in C
-#if !defined(__cplusplus) && !defined(constexpr)
+#ifndef __cplusplus
 	// C
-	#define constexpr static inline
-	#define noexcept
+	// TODO: Add separate constexpr's for functions (static inline) and variables (static)?
+	#ifndef constexpr
+		#define constexpr static inline
+	#endif
+	#ifndef noexcept
+		#define noexcept
+	#endif
 #endif
 
 // Cross-platform maybe_unused attribute
@@ -90,9 +103,10 @@
 /* Cross-platform enums, structs, and unions
    (Normally C requires the enum/struct/union keyword when invoking them, while C++ doesn't)
    From Cubitect (https://github.com/Cubitect/cubiomes/blob/0af31b4e7eeb14a58c2bd9a4c4c68b97b4a7d6e8/rng.h#L27)*/
-#ifndef ENUM
-	#define ENUM(E) typedef enum E E; enum E
-#endif
+// TODO: Not currently ISO-C compatible
+// #ifndef ENUM
+// 	#define ENUM(E) typedef enum E E; enum E
+// #endif
 #ifndef STRUCT
 	#define STRUCT(S) typedef struct S S; struct S
 #endif
@@ -102,16 +116,18 @@
 
 // ----------------------------------------------
 
+// TODO: Add support for multiple thread types (pthreads vs. Windows threads, etc.)
+
 /* ----------- C/C++ vs. CUDA support ----------- */
 
-// TODO: #include <cuda.h> directly without causing errors if C/C++.
-// For now <cuda.h> has to be #include-d in the host program before "common.h".
+/* TODO: Figure out an implementation to safely attempt #include <cuda.h> if one's compiler doesn't support the non-standard __has_include.
+   (The current workaround requires <cuda.h> to be #include-d in the host program before "common.h".)*/
+#if defined(__has_include) && __has_include(<cuda.h>)
+	#include <cuda.h>
+#endif
 
 #ifndef CUDA_VERSION
 	// C/C++
-
-	// WARNING: PROGRAMS CANNOT RELY ON PTHREADS HAVING BEEN INCLUDED IF THEY SUPPORT CUDA.
-	#include <pthread.h>
 
 	// CUDA keywords that don't exist in C/C++
 	#ifndef __device__
@@ -135,68 +151,87 @@
 
 	enum {cudaSuccess, cudaErrorInvalidValue, cudaErrorMemoryAllocation};
 
-	// Replacements for some built-in CUDA functions
-	pthread_mutex_t __mutex;
-	// Atomically adds the specified value to the value stored in the specified address. Returns the original value in the address.
-	unsigned long long atomicAdd(unsigned long long *address, int value) {
-		unsigned long long __temp = *address;
-		pthread_mutex_lock(&__mutex);
-		*address += STATIC_CAST(unsigned long long, value);
-		pthread_mutex_unlock(&__mutex);
-		return __temp;
-	}
+	/* WARNING: PROGRAMS CANNOT RELY ON PTHREADS HAVING BEEN INCLUDED IF THEY SUPPORT CUDA.
+	   (Will be obsolete when generic multithreading support is implemented)*/
+	
+	// Hack in the meantime:
+	#if defined(__has_include) && !__has_include(<pthread.h>)
+		#warning "core/C-C++-CUDA Support.h": The current implementation of this library relies on pthreads (POSIX threads) \
+		to implement certain non-CUDA fallback functions. \
+		Since that is not installed on the current device, those fallback functions have been skipped. \
+		\
+		While support for generic multithreading backends will (hopefully) be added in the future, \
+		for the time being this can be fixed by installing MSYS2 or WSL onto your system, \
+		or by simply ignoring this if you do not need CUDA vs. non-CUDA interoperability.
+	#else
+		#include <pthread.h>
 
-	// Atomically ORs the specified value to the value stored in the specified address. Returns the original value in the address.
-	unsigned long long atomicOr(uint32_t *address, uint32_t value) {
-		uint32_t __temp = *address;
-		pthread_mutex_lock(&__mutex);
-		*address |= value;
-		pthread_mutex_unlock(&__mutex);
-		return __temp;
-	}
+		// Replacements for some built-in CUDA functions
+		static pthread_mutex_t __mutex;
+		// Atomically adds the specified value to the value stored in the specified address. Returns the original value in the address.
+		static inline unsigned long long atomicAdd(unsigned long long *address, int value) {
+			unsigned long long __temp = *address;
+			pthread_mutex_lock(&__mutex);
+			*address += STATIC_CAST(unsigned long long, value);
+			pthread_mutex_unlock(&__mutex);
+			return __temp;
+		}
 
-	pthread_t *threads;
-	size_t __numberOfThreads;
-	cudaError_t cudaDeviceSynchronize() {
-		for (size_t i = 0; i < __numberOfThreads; ++i) pthread_join(threads[i], NULL);
-		return cudaSuccess;
-	}
+		// Atomically ORs the specified value to the value stored in the specified address. Returns the original value in the address.
+		static inline unsigned long long atomicOr(uint32_t *address, uint32_t value) {
+			uint32_t __temp = *address;
+			pthread_mutex_lock(&__mutex);
+			*address |= value;
+			pthread_mutex_unlock(&__mutex);
+			return __temp;
+		}
 
-	const char *cudaGetErrorString(cudaError_t error) {
+		static pthread_t *threads;
+		/* Should this and common_seedfinding by directly integrated by setting this to GLOBAL_NUMBER_OF_WORKERS?
+		   (It currently needs to be set manually otherwise)*/
+		static size_t __numberOfThreads;
+		static inline cudaError_t cudaDeviceSynchronize() {
+			for (size_t i = 0; i < __numberOfThreads; ++i) pthread_join(threads[i], NULL);
+			return cudaSuccess;
+		}
+	#endif
+
+	static inline const char *cudaGetErrorString(cudaError_t error) {
 		MAYBE_UNUSED(error);
 		return "[CUDA error fetching not yet supported]";
 	}
 
-	cudaError_t cudaGetLastError() {
+	static inline cudaError_t cudaGetLastError() {
 		return cudaSuccess;
 	}
 
-	cudaError_t cudaGetSymbolAddress(void** devPtr, void* symbol) {
+	static inline cudaError_t cudaGetSymbolAddress(void** devPtr, void* symbol) {
 		if (!devPtr || !symbol) return cudaErrorInvalidValue;
 		*devPtr = symbol;
 		STD memcpy(*devPtr, symbol, sizeof(void*));
 		return cudaSuccess;
 	}
 
-	cudaError_t cudaMalloc(void **devPtr, size_t size) {
+	static inline cudaError_t cudaMalloc(void **devPtr, size_t size) {
 		if (!devPtr) return cudaErrorInvalidValue;
 		*devPtr = STD malloc(size);
 		return *devPtr ? cudaSuccess : cudaErrorMemoryAllocation;
 	}
 
-	cudaError_t cudaFree(void *devPtr) {
+	static inline cudaError_t cudaFree(void *devPtr) {
 		STD free(devPtr);
 		return cudaSuccess;
 	}
 
-	ENUM(cudaMemcpyKind) {cudaMemcpyHostToHost, cudaMemcpyHostToDevice, cudaMemcpyDeviceToHost, cudaMemcpyDeviceToDevice, cudaMemcpyDefault};
-	cudaError_t cudaMemcpy(void *dst, const void *src, size_t count, cudaMemcpyKind kind) {
+	// ENUM(cudaMemcpyKind) {cudaMemcpyHostToHost, cudaMemcpyHostToDevice, cudaMemcpyDeviceToHost, cudaMemcpyDeviceToDevice, cudaMemcpyDefault};
+	enum cudaMemcpyKind {cudaMemcpyHostToHost, cudaMemcpyHostToDevice, cudaMemcpyDeviceToHost, cudaMemcpyDeviceToDevice, cudaMemcpyDefault};
+	static inline cudaError_t cudaMemcpy(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind) {
 		MAYBE_UNUSED(kind);
 		STD memcpy(dst, src, count);
 		return cudaSuccess;
 	}
 
-	cudaError_t cudaMemsetAsync(void* devPtr, int value, size_t count, cudaStream_t stream
+	static inline cudaError_t cudaMemsetAsync(void* devPtr, int value, size_t count, cudaStream_t stream
 	#ifdef __cplusplus
 		// C++: supports default values for arguments
 		= 0
@@ -253,17 +288,16 @@
 /* CUDA try mechanism.
    From Andrew (https://github.com/Gaider10/TreeCracker/blob/bedb5e995500fc86dcd5382ef16397e00a1da461/src/second.cu#L16)*/
 #ifndef TRY_CUDA
-	void __tryCuda(cudaError_t error, const char *file, uint64_t line) {
+	static inline void __tryCuda(cudaError_t error, const char *file, uint64_t line) {
 		if (error == cudaSuccess) return;
-		RAISE_EXCEPTION_OR_QUIT("%s error at %s:%" PRIu64 ": %s\n",
 		#ifdef CUDA_VERSION
-			"CUDA"
+			const char *__VARIANT = "CUDA";
 		#elif defined(__cplusplus)
-			"C++"
+			const char *__VARIANT = "C++";
 		#else
-			"C"
+			const char *__VARIANT = "C";
 		#endif
-		, file, line, cudaGetErrorString(error));
+		RAISE_EXCEPTION_OR_QUIT("%s error at %s:%" PRIu64 ": %s\n", __VARIANT, file, line, cudaGetErrorString(error));
 	}
 
 	#define TRY_CUDA(expression) __tryCuda(expression, __FILE__, __LINE__)

@@ -7,7 +7,7 @@ NO_DISCARD bool getNextSeed(const void* workerIndex, uint64_t *seed) {
 	// Normally fscanf is non-threadsafe, but we're only using one process anyways
 	// TODO: Support arbitrary characters following entires in seedlist, as fault tolerance?
 	if (INPUT_FILEPATH) return fscanf(inputFile, " %" SCNdFAST64 " \n", STATIC_CAST(int_fast64_t *, seed)) == 1;
-	*seed = workerIndex ? *STATIC_CAST(int *, workerIndex) + localStartSeed : *seed + localNumberOfWorkers;
+	*seed = workerIndex ? STATIC_CAST(uint64_t, *STATIC_CAST(int *, workerIndex)) + localStartSeed : *seed + STATIC_CAST(uint64_t, localNumberOfWorkers);
 	return *seed - localStartSeed < localSeedsToCheck;
 }
 #endif
@@ -28,11 +28,11 @@ int main() {
 	initGlobals();
 	if (INPUT_FILEPATH) {
 		inputFile = fopen(INPUT_FILEPATH, "r");
-		if (!inputFile) RAISE_EXCEPTION_OR_QUIT("Backends/Basic.c: main(): fopen(INPUT_FILEPATH, \"r\"): Failed to open %s.\n", INPUT_FILEPATH);
+		if (!inputFile) RAISE_EXCEPTION_OR_QUIT("core/Backends/Basic.c: main(): fopen(INPUT_FILEPATH, \"r\"): Failed to open %s.\n", INPUT_FILEPATH);
 	}
 	if (OUTPUT_FILEPATH) {
 		outputFile = fopen(OUTPUT_FILEPATH, "w");
-		if (!outputFile) RAISE_EXCEPTION_OR_QUIT("Backends/Basic.c: main(): fopen(OUTPUT_FILEPATH, \"w\"): Failed to open %s.\n", OUTPUT_FILEPATH);
+		if (!outputFile) RAISE_EXCEPTION_OR_QUIT("core/Backends/Basic.c: main(): fopen(OUTPUT_FILEPATH, \"w\"): Failed to open %s.\n", OUTPUT_FILEPATH);
 	}
 	struct timespec startTime, endTime;
 	if (TIME_PROGRAM) clock_gettime(CLOCK_MONOTONIC, &startTime);
