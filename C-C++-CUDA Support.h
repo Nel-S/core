@@ -254,11 +254,16 @@
 		}
 	#elif !defined(CUDA_VERSION)
 		// C++: has proper exception handling
-		#define RAISE_EXCEPTION_OR_QUIT(...) throw STD invalid_argument(__VA_ARGS__)
+		#define RAISE_EXCEPTION_OR_QUIT(...) \
+			fprintf(stderr, __VA_ARGS__); \
+			exit(1);
+			// Should be replaced with throw std::invalid_argument one day, but that doesn't support variadic arguments...
+			// size_t __strLength = std::string __str = std::to_string(__VA_ARGS__);
+			// throw std::invalid_argument(__str.c_str());
 	#else
 		/* CUDA: device code does not support exception throwing or printing to stderr.
 		TODO: Check if device code even supports exit() or abort() (otherwise will have to use return, which is suboptimal)*/
-		#define RAISE_EXCEPTION_OR_QUIT(...) exit(1)
+		#define RAISE_EXCEPTION_OR_QUIT(...) exit(1);
 	#endif
 #endif
 
@@ -291,7 +296,7 @@
 	static inline void __tryCuda(cudaError_t error, const char *file, uint64_t line) {
 		if (error == cudaSuccess) return;
 		#ifdef CUDA_VERSION
-			const char *__VARIANT = "CUDA";
+			// const char *__VARIANT = "CUDA";
 		#elif defined(__cplusplus)
 			const char *__VARIANT = "C++";
 		#else
