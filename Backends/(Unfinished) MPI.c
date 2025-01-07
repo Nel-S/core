@@ -1,7 +1,7 @@
 #include "../common_seedfinding.h"
 #include INCLUDE_STANDARD(limits)
 #if defined(__has_include) && !__has_include(<mpi.h>)
-	#error "core/Backends/(Unfinished) MPI.c": MPI is not installed on the current device.
+	#error "'core/Backends/(Unfinished) MPI.c': MPI is not installed on the current device."
 #else
 	#include <mpi.h>
 

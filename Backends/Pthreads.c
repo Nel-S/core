@@ -1,8 +1,8 @@
 #include "../common_seedfinding.h"
 #if defined(__has_include) && !__has_include(<pthread.h>)
-	#error core/Backends/Pthreads.c: Pthreads (POSIX threads) are not installed on the current device. \
+	#error "'core/Backends/Pthreads.c: Pthreads (POSIX threads) are not installed on the current device. \
 		While support for generic multithreading backends will (hopefully) be added in the future, \
-		for the time being this can be fixed by installing MSYS2 or WSL onto your system.
+		for the time being this can be fixed by installing MSYS2 or WSL onto your system."
 #else
 	#include <pthread.h>
 

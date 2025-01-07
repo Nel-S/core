@@ -121,7 +121,7 @@
 /* ----------- C/C++ vs. CUDA support ----------- */
 
 /* TODO: Figure out an implementation to safely attempt #include <cuda.h> if one's compiler doesn't support the non-standard __has_include.
-   (The current workaround requires <cuda.h> to be #include-d in the host program before "common.h".)*/
+   (The current workaround requires <cuda.h> to be #include-d in the host program before "common_seedfinding.h".)*/
 #if defined(__has_include) && __has_include(<cuda.h>)
 	#include <cuda.h>
 #endif
