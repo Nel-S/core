@@ -4,8 +4,8 @@
    While these constructs can be invoked in one's programs, they are primarily intended for internal use,
    and so are subject to change.*/
 
-#ifndef _C_CPP_CUDA_SUPPORT_H
-#define _C_CPP_CUDA_SUPPORT_H
+#ifndef _CORE__C_CPP_CUDA_SUPPORT_H
+#define _CORE__C_CPP_CUDA_SUPPORT_H
 
 /* ----------- C vs. C++ support ----------- */
 
@@ -68,6 +68,16 @@
 	#endif
 #endif
 
+#ifndef CONST_CAST
+	#ifndef __cplusplus
+		// C: only normal casting exists
+		#define CONST_CAST(A, B) ((A)(B))
+	#else
+		// C++: specialized casting exists
+		#define CONST_CAST(A, B) (const_cast<A>(B))
+	#endif
+#endif
+
 // Cross-platform casting
 #ifndef REINTERPRET_CAST
 	#ifndef __cplusplus
@@ -121,7 +131,7 @@
 /* ----------- C/C++ vs. CUDA support ----------- */
 
 /* TODO: Figure out an implementation to safely attempt #include <cuda.h> if one's compiler doesn't support the non-standard __has_include.
-   (The current workaround requires <cuda.h> to be #include-d in the host program before "common_seedfinding.h".)*/
+   (The current workaround requires <cuda.h> to be #include-d in the host program before bruteforce.h.)*/
 #if defined(__has_include) && __has_include(<cuda.h>)
 	#include <cuda.h>
 #endif
@@ -187,7 +197,7 @@
 		}
 
 		static pthread_t *threads;
-		/* Should this and common_seedfinding by directly integrated by setting this to GLOBAL_NUMBER_OF_WORKERS?
+		/* Should this and bruteforce.h be directly integrated by setting this to GLOBAL_NUMBER_OF_WORKERS?
 		   (It currently needs to be set manually otherwise)*/
 		static size_t __numberOfThreads;
 		static inline cudaError_t cudaDeviceSynchronize() {
@@ -254,9 +264,10 @@
 		}
 	#elif !defined(CUDA_VERSION)
 		// C++: has proper exception handling
-		#define RAISE_EXCEPTION_OR_QUIT(...) \
+		#define RAISE_EXCEPTION_OR_QUIT(...) { \
 			fprintf(stderr, __VA_ARGS__); \
-			exit(1);
+			exit(1); \
+		}
 			// Should be replaced with throw std::invalid_argument one day, but that doesn't support variadic arguments...
 			// size_t __strLength = std::string __str = std::to_string(__VA_ARGS__);
 			// throw std::invalid_argument(__str.c_str());
@@ -296,6 +307,7 @@
 	static inline void __tryCuda(cudaError_t error, const char *file, uint64_t line) {
 		if (error == cudaSuccess) return;
 		#ifdef CUDA_VERSION
+			/* Currently unused in CUDA's RAISE_EXCEPTION_OR_QUIT implementation */
 			// const char *__VARIANT = "CUDA";
 		#elif defined(__cplusplus)
 			const char *__VARIANT = "C++";

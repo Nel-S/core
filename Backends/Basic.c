@@ -1,19 +1,20 @@
-#include "../common_seedfinding.h"
+#include "../bruteforce.h"
 
 FILE *inputFile = NULL, *outputFile = NULL;
 
-#ifndef USE_CUSTOM_GET_NEXT_SEED
-NO_DISCARD bool getNextSeed(const void* workerIndex, uint64_t *seed) {
+#ifndef USE_CUSTOM_GET_NEXT_INTEGER
+NO_DISCARD bool getNextInteger(const void* workerIndex, uint64_t *integer) {
 	// Normally fscanf is non-threadsafe, but we're only using one process anyways
-	// TODO: Support arbitrary characters following entires in seedlist, as fault tolerance?
-	if (INPUT_FILEPATH) return fscanf(inputFile, " %" SCNdFAST64 " \n", STATIC_CAST(int_fast64_t *, seed)) == 1;
-	*seed = workerIndex ? STATIC_CAST(uint64_t, *STATIC_CAST(int *, workerIndex)) + localStartSeed : *seed + STATIC_CAST(uint64_t, localNumberOfWorkers);
-	return *seed - localStartSeed < localSeedsToCheck;
+	// TODO: Support arbitrary characters following entires in input list, as fault tolerance?
+	// TODO: Also support scanning unsigned 64-bit integers?
+	if (INPUT_FILEPATH) return fscanf(inputFile, " %" SCNdFAST64 " \n", REINTERPRET_CAST(int_fast64_t *, integer)) == 1;
+	*integer = workerIndex ? STATIC_CAST(uint64_t, *STATIC_CAST(const int *, workerIndex)) + localStartInteger : *integer + STATIC_CAST(uint64_t, localNumberOfWorkers);
+	return *integer - localStartInteger < localNumberOfIntegers;
 }
 #endif
 
-#ifndef USE_CUSTOM_OUTPUT_VALUES
-void outputValues(const char *format, ...) {
+#ifndef USE_CUSTOM_OUTPUT_STRING
+void outputString(const char *format, ...) {
 	va_list args;
 	va_start(args, format);
 	// Normally vfprintf is non-threadsafe, but we're only using one process anyways
@@ -25,7 +26,7 @@ void outputValues(const char *format, ...) {
 #endif
 
 int main() {
-	initGlobals();
+	initializeGlobals();
 	if (INPUT_FILEPATH) {
 		inputFile = fopen(INPUT_FILEPATH, "r");
 		if (!inputFile) RAISE_EXCEPTION_OR_QUIT("core/Backends/Basic.c: main(): fopen(INPUT_FILEPATH, \"r\"): Failed to open %s.\n", INPUT_FILEPATH);

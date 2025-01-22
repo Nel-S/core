@@ -1,8 +1,8 @@
-#include "../common_seedfinding.h"
-#include INCLUDE_STANDARD(limits)
+#include "../bruteforce.h"
 #if defined(__has_include) && !__has_include(<mpi.h>)
 	#error "'core/Backends/(Unfinished) MPI.c': MPI is not installed on the current device."
 #else
+	#include INCLUDE_STANDARD(limits)
 	#include <mpi.h>
 
 	int commrank, commsize;
@@ -12,17 +12,18 @@
 	// TODO: Generalize
 	const char *FORMAT = "%" PRId64 "\t%d\t%d";
 
-	#ifndef USE_CUSTOM_GET_NEXT_SEED
-	NO_DISCARD bool getNextSeed(const void* workerIndex, uint64_t *seed) {
+	#ifndef USE_CUSTOM_GET_NEXT_INTEGER
+	NO_DISCARD bool getNextInteger(const void* workerIndex, uint64_t *integer) {
 		if (INPUT_FILEPATH) {
 			// TODO: Seriously needs to be tested
-			for (int i = 0; i < (workerIndex ? *STATIC_CAST(int *, workerIndex) : localNumberOfWorkers - 1); ++i) {
-				if (fscanf(inputFile, " %" SCNdFAST64 " \n", STATIC_CAST(int_fast64_t *, seed)) != 1) return false;
+			// TODO: Also support scanning unsigned 64-bit integers?
+			for (int i = 0; i < (workerIndex ? *STATIC_CAST(const int *, workerIndex) : localNumberOfWorkers - 1); ++i) {
+				if (fscanf(inputFile, " %" SCNdFAST64 " \n", REINTERPRET_CAST(int_fast64_t *, integer)) != 1) return false;
 			}
-			return fscanf(inputFile, " %" SCNdFAST64 " \n", STATIC_CAST(int_fast64_t *, seed)) == 1;
+			return fscanf(inputFile, " %" SCNdFAST64 " \n", REINTERPRET_CAST(int_fast64_t *, integer)) == 1;
 		}
-		*seed = workerIndex ? *STATIC_CAST(int *, workerIndex) + localStartSeed : *seed + localNumberOfWorkers;
-		return *seed - localStartSeed < localSeedsToCheck;
+		*integer = workerIndex ? *STATIC_CAST(const int *, workerIndex) + localStartInteger : *integer + localNumberOfWorkers;
+		return *integer - localStartInteger < localNumberOfIntegers;
 	}
 	#endif
 
@@ -34,12 +35,12 @@
 		return size;
 	}
 
-	#ifndef USE_CUSTOM_OUTPUT_VALUES
-	void outputValues(const char *format, ...) {
+	#ifndef USE_CUSTOM_OUTPUT_STRING
+	void outputString(const char *format, ...) {
 		va_list args;
 		// Each process has its own copy of _messageSize, so there is no risk of race conditions here.
 		if (!_messageSize) _messageSize = getMessageSize(format);
-		unsigned long long message[_messageSize];
+		unsigned long long message[_messageSize]; // TODO: Almost certainly not ISO-C++-supported
 		va_start(args, format);
 		// TODO: Figure out how to transmit strings?
 		for (size_t i = 0; i < _messageSize; ++i) message[i] = va_arg(args, unsigned long long);
@@ -49,7 +50,7 @@
 	#endif
 
 	int main() {
-		initGlobals();
+		initializeGlobals();
 
 		MPI_Init(NULL, NULL);
 		MPI_Comm_size(MPI_COMM_WORLD, &commsize);
