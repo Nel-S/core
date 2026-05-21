@@ -1,10 +1,14 @@
-#ifndef _CORE__BRUTEFORCE_H
-#define _CORE__BRUTEFORCE_H
+#ifndef CORE_BRUTEFORCE_H
+#define CORE_BRUTEFORCE_H
 
-#include "C-C++-CUDA Support.h"
-#include INCLUDE_STANDARD(stdarg)
-#include INCLUDE_STANDARD(stdbool)
-#include INCLUDE_STANDARD(time)
+#include "common.h"
+#ifdef __cplusplus
+	#include <cstdarg>
+	#include <ctime>
+#else
+	#include <stdarg.h>
+	#include <time.h>
+#endif
 
 // These are constants that must be set in the settings for each program.
 extern const uint64_t GLOBAL_START_INTEGER, GLOBAL_NUMBER_OF_INTEGERS;
@@ -18,7 +22,7 @@ extern int localNumberOfWorkers;
 
 // Macro for GLOBAL_NUMBER_OF_INTEGERS/localNumberOfIntegers
 #ifndef CHECK_THIS_INTEGER_AND_FOLLOWING
-	#define CHECK_THIS_INTEGER_AND_FOLLOWING(startInteger, integerWidth) ((UINT64_C(1) << integerWidth) - UINT64_C(1)) - startInteger + (!!startInteger)
+	#define CHECK_THIS_INTEGER_AND_FOLLOWING(startInteger, integerWidth) ((((integerWidth) >= 0 && (integerWidth) < 64 ? UINT64_C(1) << integerWidth : 0) - UINT64_C(1)) - startInteger + (!!startInteger))
 #endif
 
 /* Macro for default "local*" variable initializations
@@ -45,16 +49,16 @@ void initializeGlobals();
 // - have a do-while loop check each integer against some conditions, calling `outputString()` if the conditions are met; and
 // - have the condition for the do-while loop call `getNextInteger(NULL, &integer)` and abort if the function returns false,
 // though custom implementations are still allowed if one wishes.
-void *runWorker(void *workerIndex);
+void runWorker(void *const workerIndex);
 
 // This is defined in the main template by default, but can be overridden by #define-ing USE_CUSTOM_GET_NEXT_INTEGER and providing your own implementation.
 // If workerIndex is not NULL, it returns the first integer for the specified worker.
 // Otherwise if workerIndex is NULL, it returns the next integer in the sequence.
 // Returns false when the end of the sequence is reached.
-NO_DISCARD bool getNextInteger(const void* workerIndex, uint64_t *integer);
+COMMON_NODISCARD bool getNextInteger(const void *const workerIndex, uint64_t *const integer);
 // This is defined in the main template by default, but can be overridden by #define-ing USE_CUSTOM_OUTPUT_STRING and providing your own implementation.
 // It prints the information for a single result given a setup identical to `printf()`.
-void outputString(const char *format, ...);
+void outputString(const char *const format, ...);
 
 #ifdef __cplusplus
 }

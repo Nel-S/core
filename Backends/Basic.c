@@ -3,12 +3,12 @@
 FILE *inputFile = NULL, *outputFile = NULL;
 
 #ifndef USE_CUSTOM_GET_NEXT_INTEGER
-NO_DISCARD bool getNextInteger(const void* workerIndex, uint64_t *integer) {
+COMMON_NODISCARD bool getNextInteger(const void* workerIndex, uint64_t *integer) {
 	// Normally fscanf is non-threadsafe, but we're only using one process anyways
 	// TODO: Support arbitrary characters following entires in input list, as fault tolerance?
 	// TODO: Also support scanning unsigned 64-bit integers?
-	if (INPUT_FILEPATH) return fscanf(inputFile, " %" SCNdFAST64 " \n", REINTERPRET_CAST(int_fast64_t *, integer)) == 1;
-	*integer = workerIndex ? STATIC_CAST(uint64_t, *STATIC_CAST(const int *, workerIndex)) + localStartInteger : *integer + STATIC_CAST(uint64_t, localNumberOfWorkers);
+	if (INPUT_FILEPATH) return fscanf(inputFile, " %" SCNdFAST64 " \n", COMMON_REINTERPRET_CAST(int_fast64_t *, integer)) == 1;
+	*integer = workerIndex ? COMMON_STATIC_CAST(uint64_t, *COMMON_STATIC_CAST(const int *, workerIndex)) + localStartInteger : *integer + COMMON_STATIC_CAST(uint64_t, localNumberOfWorkers);
 	return *integer - localStartInteger < localNumberOfIntegers;
 }
 #endif

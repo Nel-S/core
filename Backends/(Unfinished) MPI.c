@@ -1,9 +1,13 @@
-#include "../bruteforce.h"
 #if defined(__has_include) && !__has_include(<mpi.h>)
 	#error "'core/Backends/(Unfinished) MPI.c': MPI is not installed on the current device."
 #else
-	#include INCLUDE_STANDARD(limits)
+	#include "../bruteforce.h"
 	#include <mpi.h>
+	#ifdef __cplusplus
+		#include <climits>
+	#else
+		#include <limits.h>
+	#endif
 
 	int commrank, commsize;
 	size_t _messageSize = 0;
@@ -13,21 +17,21 @@
 	const char *FORMAT = "%" PRId64 "\t%d\t%d";
 
 	#ifndef USE_CUSTOM_GET_NEXT_INTEGER
-	NO_DISCARD bool getNextInteger(const void* workerIndex, uint64_t *integer) {
+	COMMON_NODISCARD bool getNextInteger(const void* workerIndex, uint64_t *integer) {
 		if (INPUT_FILEPATH) {
 			// TODO: Seriously needs to be tested
 			// TODO: Also support scanning unsigned 64-bit integers?
-			for (int i = 0; i < (workerIndex ? *STATIC_CAST(const int *, workerIndex) : localNumberOfWorkers - 1); ++i) {
-				if (fscanf(inputFile, " %" SCNdFAST64 " \n", REINTERPRET_CAST(int_fast64_t *, integer)) != 1) return false;
+			for (int i = 0; i < (workerIndex ? *COMMON_STATIC_CAST(const int *, workerIndex) : localNumberOfWorkers - 1); ++i) {
+				if (fscanf(inputFile, " %" SCNdFAST64 " \n", COMMON_REINTERPRET_CAST(int_fast64_t *, integer)) != 1) return false;
 			}
-			return fscanf(inputFile, " %" SCNdFAST64 " \n", REINTERPRET_CAST(int_fast64_t *, integer)) == 1;
+			return fscanf(inputFile, " %" SCNdFAST64 " \n", COMMON_REINTERPRET_CAST(int_fast64_t *, integer)) == 1;
 		}
-		*integer = workerIndex ? *STATIC_CAST(const int *, workerIndex) + localStartInteger : *integer + localNumberOfWorkers;
+		*integer = workerIndex ? *COMMON_STATIC_CAST(const int *, workerIndex) + localStartInteger : *integer + localNumberOfWorkers;
 		return *integer - localStartInteger < localNumberOfIntegers;
 	}
 	#endif
 
-	NO_DISCARD constexpr size_t getMessageSize(const char *format) {
+	COMMON_NODISCARD constexpr size_t getMessageSize(const char *format) {
 		size_t size = 0;
 		for (size_t i = 0; format[i] != '\0'; ++i) {
 			if (format[i] == '%' && format[++i] != '%') ++size;
