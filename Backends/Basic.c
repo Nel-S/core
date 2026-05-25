@@ -3,7 +3,7 @@
 FILE *inputFile = NULL, *outputFile = NULL;
 
 #ifndef USE_CUSTOM_GET_NEXT_INTEGER
-COMMON_NODISCARD bool getNextInteger(const void* workerIndex, uint64_t *integer) {
+COMMON_NODISCARD bool getNextInteger(const void *const workerIndex, uint64_t *const integer) {
 	// Normally fscanf is non-threadsafe, but we're only using one process anyways
 	// TODO: Support arbitrary characters following entires in input list, as fault tolerance?
 	// TODO: Also support scanning unsigned 64-bit integers?
@@ -32,13 +32,13 @@ int main() {
 		if (!inputFile) RAISE_EXCEPTION_OR_QUIT("core/Backends/Basic.c: main(): fopen(INPUT_FILEPATH, \"r\"): Failed to open %s.\n", INPUT_FILEPATH);
 	}
 	if (OUTPUT_FILEPATH) {
-		outputFile = fopen(OUTPUT_FILEPATH, "w");
+		outputFile = fopen(OUTPUT_FILEPATH, "a");
 		if (!outputFile) RAISE_EXCEPTION_OR_QUIT("core/Backends/Basic.c: main(): fopen(OUTPUT_FILEPATH, \"w\"): Failed to open %s.\n", OUTPUT_FILEPATH);
 	}
 	struct timespec startTime, endTime;
 	if (TIME_PROGRAM) clock_gettime(CLOCK_MONOTONIC, &startTime);
-	int data = 0;
-	runWorker(&data);
+	int threadIndex = 0;
+	runWorker(&threadIndex);
 	if (INPUT_FILEPATH) fclose(inputFile);
 	if (OUTPUT_FILEPATH) {
 		fflush(outputFile);

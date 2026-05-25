@@ -1,18 +1,21 @@
-#ifdef __has_include
-	#if !__has_include(<pthread.h>)
-		#error "'core/Backends/Pthreads.c: Pthreads (POSIX threads) are not installed on the current device.
-	#endif
-#endif
+// #define COMMON_CURRENT_PLATFORM COMMON_PLATFORM_C_STDLIB
+// #define COMMON_CURRENT_PLATFORM COMMON_PLATFORM_CPP_STDLIB
+// #define COMMON_CURRENT_PLATFORM COMMON_PLATFORM_POSIX
+// #define COMMON_CURRENT_PLATFORM COMMON_PLATFORM_WINDOWS
 
-#define COMMON_CURRENT_PLATFORM COMMON_PLATFORM_POSIX
 #include "../bruteforce.h"
+
+#if COMMON_CURRENT_PLATFORM == COMMON_PLATFORM_UNKNOWN
+	#error "The Core library could not automatically detect your current execution platform, or the execution platform you specified was unsupported. As a result, it could not find the libraries necessary to support mutexes and threads."
+#endif
 
 FILE *inputFile = NULL, *outputFile = NULL;
 COMMON_MUTEX_TYPE nextIntegerMutex, outputMutex;
 
-void *runWorkerWrapper(void *const workerIndex) {
+COMMON_CPU_THREAD_FUNCTION_TYPE runWorkerWrapper(void *const workerIndex) {
+	if (!workerIndex) return COMMON_CPU_THREAD_FUNCTION_RETURN;
 	runWorker(workerIndex);
-	return NULL;
+	return COMMON_CPU_THREAD_FUNCTION_RETURN;
 }
 
 #ifndef USE_CUSTOM_GET_NEXT_INTEGER
@@ -56,21 +59,19 @@ int main() {
 	COMMON_MUTEX_CREATE(outputMutex);
 	if (INPUT_FILEPATH) {
 		inputFile = fopen(INPUT_FILEPATH, "r");
-		if (!inputFile) RAISE_EXCEPTION_OR_QUIT("core/Backends/Pthreads.c: int main(): inputFile = fopen(INPUT_FILEPATH, \"r\"): Failed to open %s.\n", INPUT_FILEPATH);
+		if (!inputFile) RAISE_EXCEPTION_OR_QUIT("core/Backends/CPU Threads.c: int main(): inputFile = fopen(INPUT_FILEPATH, \"r\"): Failed to open %s.\n", INPUT_FILEPATH);
 	}
 	if (OUTPUT_FILEPATH) {
-		outputFile = fopen(OUTPUT_FILEPATH, "w");
-		if (!outputFile) RAISE_EXCEPTION_OR_QUIT("core/Backends/Pthreads.c: int main(): outputFile = fopen(OUTPUT_FILEPATH, \"w\"): Failed to open %s.\n", OUTPUT_FILEPATH);
+		outputFile = fopen(OUTPUT_FILEPATH, "a");
+		if (!outputFile) RAISE_EXCEPTION_OR_QUIT("core/Backends/CPU Threads.c: int main(): outputFile = fopen(OUTPUT_FILEPATH, \"w\"): Failed to open %s.\n", OUTPUT_FILEPATH);
 	}
 	struct timespec startTime, endTime;
 	if (TIME_PROGRAM) clock_gettime(CLOCK_MONOTONIC, &startTime);
-	pthread_t threads[GLOBAL_NUMBER_OF_WORKERS]; // TODO: Not ISO-C++-supported
-	int data[GLOBAL_NUMBER_OF_WORKERS]; // TODO: Not ISO-C++-supported
-	for (int i = 0; i < GLOBAL_NUMBER_OF_WORKERS; ++i) {
-		data[i] = i;
-		pthread_create(&threads[i], NULL, runWorkerWrapper, &data[i]);
-	}
-	for (int i = 0; i < GLOBAL_NUMBER_OF_WORKERS; ++i) pthread_join(threads[i], NULL);
+	COMMON_CPU_THREAD_TYPE threads[GLOBAL_NUMBER_OF_WORKERS]; // TODO: Not ISO-C++-supported
+	COMMON_CPU_THREAD_INDEX_TYPE threadIndices[GLOBAL_NUMBER_OF_WORKERS]; // TODO: Not ISO-C++-supported
+	for (int i = 0; i < GLOBAL_NUMBER_OF_WORKERS; ++i) COMMON_CPU_THREAD_INDEX_ACCESS(threadIndices, i) = i;
+	COMMON_CPU_THREAD_LAUNCH(threads, GLOBAL_NUMBER_OF_WORKERS, threadIndices, runWorkerWrapper);
+	COMMON_CPU_THREAD_JOIN(threads, GLOBAL_NUMBER_OF_WORKERS);
 	if (INPUT_FILEPATH) fclose(inputFile);
 	if (OUTPUT_FILEPATH) {
 		fflush(outputFile);

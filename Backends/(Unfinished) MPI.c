@@ -3,7 +3,7 @@
 #else
 	#include "../bruteforce.h"
 	#include <mpi.h>
-	#ifdef __cplusplus
+	#if COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_CPP
 		#include <climits>
 	#else
 		#include <limits.h>
@@ -17,7 +17,7 @@
 	const char *FORMAT = "%" PRId64 "\t%d\t%d";
 
 	#ifndef USE_CUSTOM_GET_NEXT_INTEGER
-	COMMON_NODISCARD bool getNextInteger(const void* workerIndex, uint64_t *integer) {
+	COMMON_NODISCARD bool getNextInteger(const void *const workerIndex, uint64_t *const integer) {
 		if (INPUT_FILEPATH) {
 			// TODO: Seriously needs to be tested
 			// TODO: Also support scanning unsigned 64-bit integers?
@@ -31,7 +31,7 @@
 	}
 	#endif
 
-	COMMON_NODISCARD constexpr size_t getMessageSize(const char *format) {
+	COMMON_NODISCARD COMMON_CONSTEXPR_FUNCTION size_t getMessageSize(const char *format) {
 		size_t size = 0;
 		for (size_t i = 0; format[i] != '\0'; ++i) {
 			if (format[i] == '%' && format[++i] != '%') ++size;
