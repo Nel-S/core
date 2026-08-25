@@ -25,11 +25,11 @@ COMMON_NODISCARD bool getNextInteger(const void *const workerIndex, uint64_t *co
 		COMMON_MUTEX_LOCK(nextIntegerMutex);
 		// TODO: Support arbitrary characters following entires in input list, as fault tolerance?
 		// TODO: Also support scanning unsigned 64-bit integers?
-		int valuesRead = fscanf(inputFile, " %" SCNdFAST64 " \n", COMMON_REINTERPRET_CAST(int_fast64_t *const, integer));
+		int valuesRead = fscanf(inputFile, " %" SCNdFAST64 " \n", COMMON_REINTERPRET_CAST(int_fast64_t *, integer));
 		COMMON_MUTEX_UNLOCK(nextIntegerMutex);
 		return valuesRead == 1;
 	}
-	*integer = workerIndex ? COMMON_STATIC_CAST(uint64_t, *COMMON_STATIC_CAST(const int *const, workerIndex)) + localStartInteger : *integer + COMMON_STATIC_CAST(uint64_t, localNumberOfWorkers);
+	*integer = workerIndex ? COMMON_STATIC_CAST(uint64_t, *COMMON_STATIC_CAST(const int *, workerIndex)) + localStartInteger : *integer + COMMON_STATIC_CAST(uint64_t, localNumberOfWorkers);
 	return *integer - localStartInteger < localNumberOfIntegers;
 }
 #endif
