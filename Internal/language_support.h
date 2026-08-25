@@ -1,7 +1,7 @@
 /* ----------- Cross-Language Support ----------- */
 
-#ifndef CORE_INTERNAL_LANGUAGE_SUPPORT_H
-#define CORE_INTERNAL_LANGUAGE_SUPPORT_H
+#ifndef CORE_INTERNAL_LANGUAGE_SUPPORT_H_
+#define CORE_INTERNAL_LANGUAGE_SUPPORT_H_
 
 #include "definitions.h"
 
@@ -183,4 +183,4 @@
 #endif
 #define COMMON_UNION(U) typedef union U U; union U
 
-#endif
+#endif // CORE_INTERNAL_LANGUAGE_SUPPORT_H_

@@ -1,5 +1,5 @@
-#ifndef CORE_BRUTEFORCE_H
-#define CORE_BRUTEFORCE_H
+#ifndef CORE_BRUTEFORCE_H_
+#define CORE_BRUTEFORCE_H_
 
 #include "common.h"
 #ifdef __cplusplus
@@ -42,7 +42,7 @@ extern "C" {
 
 // This is defined in the filtering program.
 // It must initialize all global variables prior to any workers being created.
-void initializeGlobals();
+void initializeGlobals(void);
 // This is defined in the filtering program.
 // It must initialize a worker; it is also recommended it
 // - call `getNextInteger(workerIndex, &integer)` once to fetch the first integer (or abort if the function returns false),
@@ -64,4 +64,4 @@ void outputString(const char *const format, ...);
 }
 #endif
 
-#endif
+#endif // CORE_BRUTEFORCE_H_

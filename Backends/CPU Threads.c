@@ -53,7 +53,7 @@ void outputString(const char *format, ...) {
 }
 #endif
 
-int main() {
+int main(void) {
 	initializeGlobals();
 	COMMON_MUTEX_CREATE(nextIntegerMutex);
 	COMMON_MUTEX_CREATE(outputMutex);

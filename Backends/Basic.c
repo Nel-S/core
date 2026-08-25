@@ -25,7 +25,7 @@ void outputString(const char *format, ...) {
 }
 #endif
 
-int main() {
+int main(void) {
 	initializeGlobals();
 	if (INPUT_FILEPATH) {
 		inputFile = fopen(INPUT_FILEPATH, "r");

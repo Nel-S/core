@@ -53,7 +53,7 @@
 	}
 	#endif
 
-	int main() {
+	int main(void) {
 		initializeGlobals();
 
 		MPI_Init(NULL, NULL);

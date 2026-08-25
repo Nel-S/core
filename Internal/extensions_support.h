@@ -1,6 +1,6 @@
 /* ----------- C/C++ vs. CUDA support ----------- */
-#ifndef CORE_INTERNAL_EXTENSIONS_SUPPORT_H
-#define CORE_INTERNAL_EXTENSIONS_SUPPORT_H
+#ifndef CORE_INTERNAL_EXTENSIONS_SUPPORT_H_
+#define CORE_INTERNAL_EXTENSIONS_SUPPORT_H_
 
 #include "platform_support.h"
 
@@ -148,7 +148,7 @@
 		/* Should this and bruteforce.h be directly integrated by setting this to GLOBAL_NUMBER_OF_WORKERS?
 		   (It currently needs to be set manually otherwise)*/
 		static size_t __numberOfThreads;
-		static inline COMMON_CUDAERROR_T cudaDeviceSynchronize() {
+		static inline COMMON_CUDAERROR_T cudaDeviceSynchronize(void) {
 			for (size_t i = 0; i < __numberOfThreads; ++i) pthread_join(threads[i], NULL);
 			return COMMON_CUDA_SUCCESS;
 		}
@@ -159,7 +159,7 @@
 		return "[CUDA error fetching not yet supported]";
 	}
 
-	static inline COMMON_CUDAERROR_T cudaGetLastError() {
+	static inline COMMON_CUDAERROR_T cudaGetLastError(void) {
 		return COMMON_CUDA_SUCCESS;
 	}
 
@@ -268,4 +268,4 @@
 	#define TRY_CUDA(expression) __tryCuda(expression, __FILE__, __LINE__)
 #endif
 
-#endif
+#endif // CORE_INTERNAL_EXTENSIONS_SUPPORT_H_
