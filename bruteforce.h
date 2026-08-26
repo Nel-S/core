@@ -2,7 +2,7 @@
 #define CORE_BRUTEFORCE_H_
 
 #include "common.h"
-#ifdef __cplusplus
+#if COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_CPP
 	#include <cstdarg>
 	#include <ctime>
 #else
@@ -36,20 +36,20 @@ extern int localNumberOfWorkers;
 
 
 
-#ifdef __cplusplus
+#if COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_CPP
 extern "C" {
 #endif
 
 // This is defined in the filtering program.
 // It must initialize all global variables prior to any workers being created.
-void initializeGlobals(void);
+int initializeGlobals(void);
 // This is defined in the filtering program.
 // It must initialize a worker; it is also recommended it
 // - call `getNextInteger(workerIndex, &integer)` once to fetch the first integer (or abort if the function returns false),
 // - have a do-while loop check each integer against some conditions, calling `outputString()` if the conditions are met; and
 // - have the condition for the do-while loop call `getNextInteger(NULL, &integer)` and abort if the function returns false,
 // though custom implementations are still allowed if one wishes.
-void runWorker(void *const workerIndex);
+void runWorker(const void *const workerIndex);
 
 // This is defined in the main template by default, but can be overridden by #define-ing USE_CUSTOM_GET_NEXT_INTEGER and providing your own implementation.
 // If workerIndex is not NULL, it returns the first integer for the specified worker.
@@ -60,7 +60,7 @@ COMMON_NODISCARD bool getNextInteger(const void *const workerIndex, uint64_t *co
 // It prints the information for a single result given a setup identical to `printf()`.
 void outputString(const char *const format, ...);
 
-#ifdef __cplusplus
+#if COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_CPP
 }
 #endif
 

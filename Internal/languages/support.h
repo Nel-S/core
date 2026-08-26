@@ -1,27 +1,9 @@
 /* ----------- Cross-Language Support ----------- */
 
-#ifndef CORE_INTERNAL_LANGUAGE_SUPPORT_H_
-#define CORE_INTERNAL_LANGUAGE_SUPPORT_H_
+#ifndef CORE_INTERNAL_LANGUAGES_SUPPORT_H_
+#define CORE_INTERNAL_LANGUAGES_SUPPORT_H_
 
 #include "definitions.h"
-
-// Import language-specific libraries this file will need
-/* TODO: Maybe try falling back on <*.h> if <c*> is unfindable?*/
-#if COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_C
-	#include <inttypes.h> // uint32_t, uint64_t
-	#include <stdbool.h>
-	#include <stdio.h>    // fprintf, stderr
-	#include <stdlib.h>   // malloc
-	#include <string.h>   // memcpy
-#elif COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_CPP
-	#include <cinttypes> // uint32_t, uint64_t
-	#include <cstdio>    // fprintf, stderr
-	#include <cstdlib>   // malloc
-	#include <cstring>   // memcpy
-	#include <stdexcept>
-#else 
-	#error "Invalid current language."
-#endif
 
 // Substitute/ignore keywords that don't exist in all languages
 // Cross-version const_cast
@@ -74,7 +56,7 @@
 	#define COMMON_DEPRECATED
 #endif
 
-// Cross-language [[maybe_unused]]
+// Cross-version [[maybe_unused]]
 // For versions not supporting [[maybe_unused]], a workaround by mtvec https://stackoverflow.com/a/3599170)
 // exists to still silence compilers. However it must be placed solely in the function body, while
 // [[maybe_unused]] can exist in either the function body or the argument list. Therefore we define two
@@ -95,6 +77,33 @@
 	#define COMMON_MAYBE_UNUSED_FOR_FUNCTION_BODY(VARIABLE) (void)(VARIABLE)
 #endif
 
+// Cross-version namespace
+#ifdef COMMON_NAMESPACE
+	#undef COMMON_NAMESPACE
+#endif
+#if COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_CPP && COMMON_CURRENT_LANGUAGE_VERSION >= COMMON_LANGUAGE_VERSION_CPP_98
+	// C++98
+	#define COMMON_NAMESPACE(NAME, EXPRESSIONS) namespace NAME { \
+		EXPRESSIONS \
+	};
+#else
+	// C/C++ pre-98
+	#define COMMON_NAMESPACE(NAME, EXPRESSIONS) EXPRESSIONS
+#endif
+
+// Cross-version namespace identifiers (e.g. std::)
+#ifdef COMMON_NAMESPACE_IDENTIFIER
+	#undef COMMON_NAMESPACE_IDENTIFIER
+#endif
+#if COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_CPP && COMMON_CURRENT_LANGUAGE_VERSION >= COMMON_LANGUAGE_VERSION_CPP_98
+	// C++98
+	#define COMMON_NAMESPACE_IDENTIFIER(NAMESPACE) NAMESPACE::
+#else
+	// C/C++ pre-98
+	#define COMMON_NAMESPACE_IDENTIFIER(NAMESPACE)
+#endif
+
+// Cross-version [[noexcept]]
 #ifdef COMMON_NOEXCEPT
 	#undef COMMON_NOEXCEPT
 #endif
@@ -106,7 +115,7 @@
 	#define COMMON_NOEXCEPT(CONDITIONS)
 #endif
 
-// Cross-language [[nodiscard]]
+// Cross-version [[nodiscard]]
 #ifdef COMMON_NODISCARD
 	#undef COMMON_NODISCARD
 #endif
@@ -131,6 +140,22 @@
 	#define COMMON_REINTERPRET_CAST(TYPE, EXPRESSION) ((TYPE)(EXPRESSION))
 #endif
 
+// Cross-version restrict
+#ifdef COMMON_RESTRICT
+	#undef COMMON_RESTRICT
+#endif
+#if COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_C && COMMON_CURRENT_LANGUAGE_VERSION >= COMMON_LANGUAGE_VERSION_C_99
+	// C99
+	#define COMMON_RESTRICT restrict
+#elif defined(__restrict)
+	#define COMMON_RESTRICT __restrict
+#elif defined(__restrict__)
+	#define COMMON_RESTRICT __restrict__
+#else
+	// C89/C++
+	#define COMMON_RESTRICT
+#endif
+
 // Cross-version static_cast
 #ifdef COMMON_STATIC_CAST
 	#undef COMMON_STATIC_CAST
@@ -142,18 +167,6 @@
 #else
 	// C/C++ pre-98: only normal casting exists
 	#define COMMON_STATIC_CAST(TYPE, EXPRESSION) ((TYPE)(EXPRESSION))
-#endif
-
-// Cross-language standard library references (for duplicate functions/variables in both languages, at least)
-#ifdef COMMON_STD
-	#undef COMMON_STD
-#endif
-#if COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_CPP
-	// C++
-	#define COMMON_STD std::
-#else
-	// C: doesn't exist
-	#define COMMON_STD
 #endif
 
 /* Cross-platform enums, structs, and unions
@@ -183,4 +196,4 @@
 #endif
 #define COMMON_UNION(U) typedef union U U; union U
 
-#endif // CORE_INTERNAL_LANGUAGE_SUPPORT_H_
+#endif // CORE_INTERNAL_LANGUAGES_SUPPORT_H_

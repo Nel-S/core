@@ -1,8 +1,31 @@
 /* ----------- C/C++ vs. CUDA support ----------- */
-#ifndef CORE_INTERNAL_EXTENSIONS_SUPPORT_H_
-#define CORE_INTERNAL_EXTENSIONS_SUPPORT_H_
+#ifndef CORE_INTERNAL_EXTENSIONSSUPPORT_H_
+#define CORE_INTERNAL_EXTENSIONSSUPPORT_H_
 
-#include "platform_support.h"
+#include "../languages/definitions.h"
+#include "../languages/support.h"
+#include "../platforms/definitions.h"
+#include "../platforms/support.h"
+
+
+// Import language-specific libraries this file will need
+/* TODO: Maybe try falling back on <*.h> if <c*> is unfindable?*/
+#if COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_C
+	#include <inttypes.h> // uint32_t, uint64_t
+	#include <stddef.h>   // size_t
+	#include <stdio.h>    // fprintf, stderr
+	#include <stdlib.h>   // malloc
+	#include <string.h>   // memcpy
+#elif COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_CPP
+	#include <cinttypes> // uint32_t, uint64_t
+	#include <cstddef>   // size_t
+	#include <cstdio>    // fprintf, stderr
+	#include <cstdlib>   // malloc
+	#include <cstring>   // memcpy
+	#include <stdexcept>
+#else 
+	#error "Invalid current language."
+#endif
 
 #if COMMON_CURRENT_EXTENSIONS & COMMON_EXTENSIONS_CUDA
 	#include <cuda.h>
@@ -109,50 +132,34 @@
 
 	enum {cudaErrorMemoryAllocation};
 
-	/* WARNING: PROGRAMS CANNOT RELY ON PTHREADS HAVING BEEN INCLUDED IF THEY SUPPORT CUDA.
-	   (Will be obsolete when generic multithreading support is implemented)*/
-	
-	// Hack in the meantime:
-	#if defined(__has_include) && !__has_include(<pthread.h>)
-		#warning "core/C-C++-CUDA Support.h": The current implementation of this library relies on pthreads (POSIX threads) \
-		to implement certain non-CUDA fallback functions. \
-		Since that is not installed on the current device, those fallback functions have been skipped. \
-		\
-		While support for generic multithreading backends will (hopefully) be added in the future, \
-		for the time being this can be fixed by installing MSYS2 or WSL onto your system, \
-		or by simply ignoring this if you do not need CUDA vs. non-CUDA interoperability.
-	#else
-		#include <pthread.h>
+	// Replacements for some built-in CUDA functions
+	static COMMON_MUTEX_TYPE mutex_;
+	// Atomically adds the specified value to the value stored in the specified address. Returns the original value in the address.
+	static inline unsigned long long atomicAdd(unsigned long long *address, int value) {
+		unsigned long long temp_ = *address;
+		COMMON_MUTEX_LOCK(mutex_);
+		*address += COMMON_STATIC_CAST(unsigned long long, value);
+		COMMON_MUTEX_UNLOCK(mutex_);
+		return temp_;
+	}
 
-		// Replacements for some built-in CUDA functions
-		static pthread_mutex_t __mutex;
-		// Atomically adds the specified value to the value stored in the specified address. Returns the original value in the address.
-		static inline unsigned long long atomicAdd(unsigned long long *address, int value) {
-			unsigned long long __temp = *address;
-			pthread_mutex_lock(&__mutex);
-			*address += COMMON_STATIC_CAST(unsigned long long, value);
-			pthread_mutex_unlock(&__mutex);
-			return __temp;
-		}
+	// Atomically ORs the specified value to the value stored in the specified address. Returns the original value in the address.
+	static inline unsigned long long atomicOr(uint32_t *address, uint32_t value) {
+		COMMON_NAMESPACE_IDENTIFIER(std) uint32_t temp_ = *address;
+		COMMON_MUTEX_LOCK(mutex_);
+		*address |= value;
+		COMMON_MUTEX_UNLOCK(mutex_);
+		return temp_;
+	}
 
-		// Atomically ORs the specified value to the value stored in the specified address. Returns the original value in the address.
-		static inline unsigned long long atomicOr(uint32_t *address, uint32_t value) {
-			uint32_t __temp = *address;
-			pthread_mutex_lock(&__mutex);
-			*address |= value;
-			pthread_mutex_unlock(&__mutex);
-			return __temp;
-		}
-
-		static pthread_t *threads;
-		/* Should this and bruteforce.h be directly integrated by setting this to GLOBAL_NUMBER_OF_WORKERS?
-		   (It currently needs to be set manually otherwise)*/
-		static size_t __numberOfThreads;
-		static inline COMMON_CUDAERROR_T cudaDeviceSynchronize(void) {
-			for (size_t i = 0; i < __numberOfThreads; ++i) pthread_join(threads[i], NULL);
-			return COMMON_CUDA_SUCCESS;
-		}
-	#endif
+	static COMMON_CPU_THREAD_TYPE *threads;
+	/* Should this and bruteforce.h be directly integrated by setting this to GLOBAL_NUMBER_OF_WORKERS?
+		(It currently needs to be set manually otherwise)*/
+	static COMMON_NAMESPACE_IDENTIFIER(std) size_t numberOfThreads_;
+	static inline COMMON_CUDAERROR_T cudaDeviceSynchronize(void) {
+		COMMON_CPU_THREAD_JOIN(threads, numberOfThreads_);
+		return COMMON_CUDA_SUCCESS;
+	}
 
 	static inline const char *cudaGetErrorString(COMMON_MAYBE_UNUSED_FOR_ARGUMENT_LIST(COMMON_CUDAERROR_T error)) {
 		COMMON_MAYBE_UNUSED_FOR_FUNCTION_BODY(error);
@@ -166,18 +173,18 @@
 	static inline COMMON_CUDAERROR_T cudaGetSymbolAddress(void** devPtr, void* symbol) {
 		if (!devPtr || !symbol) return COMMON_CUDA_ERROR_INVALID_VALUE;
 		*devPtr = symbol;
-		COMMON_STD memcpy(*devPtr, symbol, sizeof(void*));
+		COMMON_NAMESPACE_IDENTIFIER(std) memcpy(*devPtr, symbol, sizeof(void*));
 		return COMMON_CUDA_SUCCESS;
 	}
 
 	static inline COMMON_CUDAERROR_T cudaMalloc(void **devPtr, size_t size) {
 		if (!devPtr) return COMMON_CUDA_ERROR_INVALID_VALUE;
-		*devPtr = COMMON_STD malloc(size);
+		*devPtr = COMMON_NAMESPACE_IDENTIFIER(std) malloc(size);
 		return *devPtr ? COMMON_CUDA_SUCCESS : cudaErrorMemoryAllocation;
 	}
 
 	static inline COMMON_CUDAERROR_T cudaFree(void *devPtr) {
-		COMMON_STD free(devPtr);
+		COMMON_NAMESPACE_IDENTIFIER(std) free(devPtr);
 		return COMMON_CUDA_SUCCESS;
 	}
 
@@ -185,25 +192,25 @@
 	enum cudaMemcpyKind {cudaMemcpyHostToHost, cudaMemcpyHostToDevice, cudaMemcpyDeviceToHost, cudaMemcpyDeviceToDevice, cudaMemcpyDefault};
 	static inline COMMON_CUDAERROR_T cudaMemcpy(void *dst, const void *src, size_t count, COMMON_MAYBE_UNUSED_FOR_ARGUMENT_LIST(enum cudaMemcpyKind kind)) {
 		COMMON_MAYBE_UNUSED_FOR_FUNCTION_BODY(kind);
-		COMMON_STD memcpy(dst, src, count);
+		COMMON_NAMESPACE_IDENTIFIER(std) memcpy(dst, src, count);
 		return COMMON_CUDA_SUCCESS;
 	}
 
 	static inline COMMON_CUDAERROR_T cudaMemsetAsync(void* devPtr, int value, size_t count, COMMON_MAYBE_UNUSED_FOR_ARGUMENT_LIST(COMMON_CUDASTREAM_T stream)
-	#ifdef __cplusplus
+	#if COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_CPP
 		// C++: supports default values for arguments
 		= 0
 	#endif
 	) {
 		COMMON_MAYBE_UNUSED_FOR_FUNCTION_BODY(stream);
-		COMMON_STD memset(devPtr, value, count);
+		COMMON_NAMESPACE_IDENTIFIER(std) memset(devPtr, value, count);
 		return COMMON_CUDA_SUCCESS;
 	}
 #endif
 
 // Exception raising, variant one: raise an exception if supported, quit if not.
 #ifndef RAISE_EXCEPTION_OR_QUIT
-	#ifndef __cplusplus
+	#if COMMON_CURRENT_LANGUAGE == COMMON_LANGUAGE_C
 		/* C: has no exception handling.
 		From Andrew (https://github.com/Gaider10/TreeCracker/blob/bedb5e995500fc86dcd5382ef16397e00a1da461/src/second.cu#L11)*/
 		#define RAISE_EXCEPTION_OR_QUIT(...) { \
@@ -241,7 +248,7 @@
 #ifndef DEVICE_RETURN
 	#ifndef CUDA_VERSION
 		// C/C++: use pthreads to emulate multithreaded "device" code (really still just host code), which have a return type of void*
-		#define DEVICE_RETURN return NULL
+		#define DEVICE_RETURN return COMMON_CPU_THREAD_FUNCTION_RETURN
 	#else
 		// CUDA: use __global__ functions
 		// TODO: Must __global__ functions necessarily return void? If not, need to add argument

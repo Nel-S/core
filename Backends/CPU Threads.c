@@ -54,7 +54,8 @@ void outputString(const char *format, ...) {
 #endif
 
 int main(void) {
-	initializeGlobals();
+	int errorCode = initializeGlobals();
+	if (errorCode) RAISE_EXCEPTION_OR_QUIT("core/Backends/CPU Threads.c: int main(): initializeGlobals returned error code %d.", errorCode);
 	COMMON_MUTEX_CREATE(nextIntegerMutex);
 	COMMON_MUTEX_CREATE(outputMutex);
 	if (INPUT_FILEPATH) {

@@ -54,7 +54,8 @@
 	#endif
 
 	int main(void) {
-		initializeGlobals();
+		int errorCode = initializeGlobals();
+		if (errorCode) RAISE_EXCEPTION_OR_QUIT("Worker %d: main(): initializeGlobals returned error code %d.", commrank, errorCode);
 
 		MPI_Init(NULL, NULL);
 		MPI_Comm_size(MPI_COMM_WORLD, &commsize);

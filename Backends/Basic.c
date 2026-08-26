@@ -26,10 +26,11 @@ void outputString(const char *format, ...) {
 #endif
 
 int main(void) {
-	initializeGlobals();
+	int errorCode = initializeGlobals();
+	if (errorCode) RAISE_EXCEPTION_OR_QUIT("core/Backends/Basic.c: int main(): initializeGlobals returned error code %d.", errorCode);
 	if (INPUT_FILEPATH) {
 		inputFile = fopen(INPUT_FILEPATH, "r");
-		if (!inputFile) RAISE_EXCEPTION_OR_QUIT("core/Backends/Basic.c: main(): fopen(INPUT_FILEPATH, \"r\"): Failed to open %s.\n", INPUT_FILEPATH);
+		if (!inputFile) RAISE_EXCEPTION_OR_QUIT("core/Backends/Basic.c: int main(): fopen(INPUT_FILEPATH, \"r\"): Failed to open %s.\n", INPUT_FILEPATH);
 	}
 	if (OUTPUT_FILEPATH) {
 		outputFile = fopen(OUTPUT_FILEPATH, "a");
