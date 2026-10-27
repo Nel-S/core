@@ -155,7 +155,7 @@
 	static COMMON_CPU_THREAD_TYPE *threads;
 	/* Should this and bruteforce.h be directly integrated by setting this to GLOBAL_NUMBER_OF_WORKERS?
 		(It currently needs to be set manually otherwise)*/
-	static COMMON_NAMESPACE_IDENTIFIER(std) size_t numberOfThreads_;
+	static int numberOfThreads_;
 	static inline COMMON_CUDAERROR_T cudaDeviceSynchronize(void) {
 		COMMON_CPU_THREAD_JOIN(threads, numberOfThreads_);
 		return COMMON_CUDA_SUCCESS;
